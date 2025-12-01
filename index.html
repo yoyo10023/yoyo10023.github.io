@@ -59,7 +59,7 @@
     <script type="text/babel">
         const { useState, useEffect, useRef, useMemo } = React;
         
-        // --- Inline Icons (Replaces lucide-react dependency for stability) ---
+        // --- Inline Icons ---
         const IconBase = ({ children, ...props }) => (
             <svg 
                 xmlns="http://www.w3.org/2000/svg" 
@@ -101,18 +101,22 @@
             Check: (props) => <IconBase {...props}><path d="M20 6 9 17l-5-5"/></IconBase>,
             Tag: (props) => <IconBase {...props}><path d="M12.586 2.586A2 2 0 0 0 11.172 2H4a2 2 0 0 0-2 2v7.172a2 2 0 0 0 .586 1.414l5 5a2 2 0 0 0 2.828 0l7.172-7.172a2 2 0 0 0 0-2.828l-5-5z"/><circle cx="7.5" cy="7.5" r=".5" fill="currentColor"/></IconBase>,
             UserCog: (props) => <IconBase {...props}><circle cx="18" cy="15" r="3"/><circle cx="9" cy="7" r="4"/><path d="M10 15H6a4 4 0 0 0-4 4v2"/><path d="m21.7 16.4.9.9"/><path d="m15.3 13.6.9.9"/><path d="m21.7 13.6-.9.9"/><path d="m15.3 16.4-.9.9"/><path d="M19.5 13.5v-1"/><path d="M16.5 13.5v-1"/><path d="M19.5 16.5v1"/><path d="M16.5 16.5v1"/></IconBase>,
-            Image: (props) => <IconBase {...props}><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></IconBase>
+            Image: (props) => <IconBase {...props}><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></IconBase>,
+            ChevronUp: (props) => <IconBase {...props}><path d="m18 15-6-6-6 6"/></IconBase>,
+            ChevronDown: (props) => <IconBase {...props}><path d="m6 9 6 6 6-6"/></IconBase>,
+            ArrowUpDown: (props) => <IconBase {...props}><path d="m21 16-4 4-4-4"/><path d="M17 20V4"/><path d="m3 8 4-4 4 4"/><path d="M7 4v16"/></IconBase>
         };
 
         const { 
             Send, Wallet, PieChart, Settings, Plus, Trash2, Edit2, 
             Camera, X, Save, RefreshCcw, Moon, Sun, ArrowRightLeft, 
             MessageSquare, Upload, ChevronLeft, MoreVertical, Download, 
-            FileJson, Calendar, Check, Tag, UserCog, Image: ImageIcon 
+            FileJson, Calendar, Check, Tag, UserCog, Image: ImageIcon,
+            ChevronUp, ChevronDown, ArrowUpDown
         } = Icons;
 
         /**
-         * AI Smart Accounting App (Standalone HTML Version)
+         * AI Smart Accounting App
          */
 
         // --- Constants & Defaults ---
@@ -145,9 +149,9 @@
         ];
 
         const DEFAULT_WALLETS = [
-            { id: 'cash', name: '現金', type: 'Cash', balance: 5000, color: 'bg-green-500' },
-            { id: 'bank', name: '銀行帳戶', type: 'Bank', balance: 50000, color: 'bg-blue-500' },
-            { id: 'credit', name: '信用卡', type: 'Credit', balance: -2000, color: 'bg-red-500' },
+            { id: 'cash', name: '現金', type: '現金', balance: 5000, color: 'bg-green-500' },
+            { id: 'bank', name: '銀行帳戶', type: '銀行', balance: 50000, color: 'bg-blue-500' },
+            { id: 'credit', name: '信用卡', type: '信用卡', balance: -2000, color: 'bg-red-500' },
         ];
 
         const DEFAULT_CATEGORIES = {
@@ -155,6 +159,8 @@
             income: ['薪水', '獎金', '投資', '兼職', '紅包', '其他'],
             transfer: ['轉帳']
         };
+
+        const DEFAULT_WALLET_TYPES = ['現金', '銀行', '信用卡', '數位帳戶', '投資', '儲值卡', '其他'];
 
         // --- Helper Functions ---
 
@@ -191,6 +197,7 @@
             const [personas, setPersonas] = useState(DEFAULT_PERSONAS);
             const [currentPersonaId, setCurrentPersonaId] = useState('wife');
             const [categories, setCategories] = useState(DEFAULT_CATEGORIES);
+            const [walletTypes, setWalletTypes] = useState(DEFAULT_WALLET_TYPES);
 
             // UI States
             const [isLoading, setIsLoading] = useState(false);
@@ -201,6 +208,7 @@
             const [editingItem, setEditingItem] = useState(null);
             const [selectedWallet, setSelectedWallet] = useState(null);
             const [activeCategoryTab, setActiveCategoryTab] = useState('expense');
+            const [isWalletReordering, setIsWalletReordering] = useState(false);
 
             const chatEndRef = useRef(null);
 
@@ -216,6 +224,7 @@
                         const savedPersonas = JSON.parse(localStorage.getItem('personas'));
                         const savedCurrentPersona = localStorage.getItem('currentPersonaId');
                         const savedCategories = JSON.parse(localStorage.getItem('categories'));
+                        const savedWalletTypes = JSON.parse(localStorage.getItem('walletTypes'));
                         const savedMode = localStorage.getItem('darkMode') === 'true';
 
                         if (savedApiKey) setApiKey(savedApiKey);
@@ -225,6 +234,7 @@
                         if (savedPersonas) setPersonas(savedPersonas);
                         if (savedCurrentPersona) setCurrentPersonaId(savedCurrentPersona);
                         if (savedCategories) setCategories(savedCategories);
+                        if (savedWalletTypes) setWalletTypes(savedWalletTypes);
                         setIsDarkMode(savedMode);
                     } catch (e) {
                         console.error("Failed to load data", e);
@@ -241,6 +251,7 @@
                 localStorage.setItem('personas', JSON.stringify(personas));
                 localStorage.setItem('currentPersonaId', currentPersonaId);
                 localStorage.setItem('categories', JSON.stringify(categories));
+                localStorage.setItem('walletTypes', JSON.stringify(walletTypes));
                 localStorage.setItem('darkMode', isDarkMode);
                 
                 if (isDarkMode) {
@@ -248,7 +259,7 @@
                 } else {
                     document.documentElement.classList.remove('dark');
                 }
-            }, [apiKey, wallets, transactions, chatHistory, personas, currentPersonaId, categories, isDarkMode]);
+            }, [apiKey, wallets, transactions, chatHistory, personas, currentPersonaId, categories, walletTypes, isDarkMode]);
 
             useEffect(() => {
                 if (activeTab === 'chat') {
@@ -298,7 +309,7 @@
                 const applyImpact = calculateBalanceImpact(newTx, false);
                 currentWallets = currentWallets.map(w => ({
                     ...w,
-                    balance: w.balance + (applyImpact[w.id] || 0)
+                    balance: (w.balance || 0) + (applyImpact[w.id] || 0)
                 }));
 
                 setWallets(currentWallets);
@@ -312,6 +323,47 @@
                 setEditingItem(null);
                 setModalOpen(null);
                 showNotification(editingItem ? '交易已更新' : '交易已新增', 'success');
+            };
+
+            const handleSaveWallet = (e) => {
+                e.preventDefault();
+                const formData = new FormData(e.target);
+                
+                const newWalletData = {
+                    name: formData.get('name'),
+                    type: formData.get('type'),
+                    balance: Number(formData.get('balance')),
+                    color: formData.get('color')
+                };
+
+                if (editingItem && editingItem.id) {
+                    // Update existing wallet
+                    setWallets(prev => prev.map(w => w.id === editingItem.id ? { ...w, ...newWalletData } : w));
+                    // Also update selectedWallet if it's the one being edited
+                    if (selectedWallet && selectedWallet.id === editingItem.id) {
+                        setSelectedWallet({ ...selectedWallet, ...newWalletData });
+                    }
+                } else {
+                    // Create new wallet
+                    const newWallet = {
+                        id: generateId(),
+                        ...newWalletData
+                    };
+                    setWallets(prev => [...prev, newWallet]);
+                }
+                setModalOpen(null);
+                setEditingItem(null);
+                showNotification('錢包已儲存', 'success');
+            };
+
+            const moveWallet = (index, direction) => {
+                const newWallets = [...wallets];
+                if (direction === 'up' && index > 0) {
+                    [newWallets[index], newWallets[index - 1]] = [newWallets[index - 1], newWallets[index]];
+                } else if (direction === 'down' && index < newWallets.length - 1) {
+                    [newWallets[index], newWallets[index + 1]] = [newWallets[index + 1], newWallets[index]];
+                }
+                setWallets(newWallets);
             };
 
             const deleteTransaction = (txId) => {
@@ -329,7 +381,6 @@
                 showNotification('交易已刪除', 'info');
             };
 
-            // --- New Feature: Delete Message and Linked Transaction ---
             const handleDeleteMessage = (msgId) => {
                 const msg = chatHistory.find(m => m.id === msgId);
                 if (!msg) return;
@@ -344,8 +395,6 @@
                 if (hasTransaction) {
                     const txId = msg.relatedTransactionId;
                     const tx = transactions.find(t => t.id === txId);
-                    
-                    // Only revert if transaction actually exists (might have been deleted manually in transaction list)
                     if (tx) {
                         const impact = calculateBalanceImpact(tx, true);
                         setWallets(prev => prev.map(w => ({
@@ -523,19 +572,26 @@
 
             // --- Sub-Components ---
             
-            const WalletCard = ({ wallet, onClick, compact = false }) => (
+            const WalletCard = ({ wallet, onClick, compact = false, showSort = false, onMoveUp, onMoveDown }) => (
                 <div 
                     onClick={onClick}
-                    className={`${wallet.color} text-white ${compact ? 'p-3' : 'p-4'} rounded-xl shadow-lg relative overflow-hidden transition-transform transform active:scale-95 cursor-pointer`}
+                    className={`${wallet.color} text-white ${compact ? 'p-3' : 'p-4'} rounded-xl shadow-lg relative overflow-hidden transition-transform transform ${!showSort && 'active:scale-95'} cursor-pointer flex justify-between items-center`}
                 >
-                    <div className="absolute top-0 right-0 opacity-10 p-2">
-                        <Wallet size={compact ? 40 : 64} />
-                    </div>
-                    <div className="relative z-10">
+                    <div className="relative z-10 flex-1">
                         <p className={`text-sm opacity-90 ${compact ? 'mb-0' : 'mb-1'}`}>{wallet.type}</p>
                         <h3 className={`${compact ? 'text-lg' : 'text-xl'} font-bold ${compact ? 'mb-1' : 'mb-2'}`}>{wallet.name}</h3>
                         <p className={`${compact ? 'text-xl' : 'text-2xl'} font-mono font-bold tracking-tight`}>{formatCurrency(wallet.balance)}</p>
                     </div>
+                    {showSort ? (
+                        <div className="flex flex-col gap-2 z-20" onClick={e => e.stopPropagation()}>
+                            <button onClick={onMoveUp} className="p-1 bg-white/20 rounded hover:bg-white/40"><ChevronUp size={20} /></button>
+                            <button onClick={onMoveDown} className="p-1 bg-white/20 rounded hover:bg-white/40"><ChevronDown size={20} /></button>
+                        </div>
+                    ) : (
+                        <div className="absolute top-0 right-0 opacity-10 p-2 pointer-events-none">
+                            <Wallet size={compact ? 40 : 64} />
+                        </div>
+                    )}
                 </div>
             );
 
@@ -602,45 +658,20 @@
                         )}
                         {chatHistory.map((msg) => (
                             <div key={msg.id} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'} items-end gap-2`}>
-                                {/* Delete button on the Left for User messages, Right for AI (swapped for UX flow) */}
                                 {msg.role === 'user' && (
-                                    <button 
-                                        onClick={() => handleDeleteMessage(msg.id)}
-                                        className="mb-2 p-1.5 text-gray-300 hover:text-red-500 rounded-full active:bg-gray-200 transition-colors"
-                                    >
-                                        <Trash2 size={14} />
-                                    </button>
+                                    <button onClick={() => handleDeleteMessage(msg.id)} className="mb-2 p-1.5 text-gray-300 hover:text-red-500 rounded-full active:bg-gray-200 transition-colors"><Trash2 size={14} /></button>
                                 )}
-
-                                <div className={`max-w-[85%] p-3 rounded-2xl ${
-                                    msg.role === 'user' 
-                                        ? 'bg-blue-500 text-white rounded-br-none' 
-                                        : 'bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-200 shadow-sm rounded-bl-none border border-gray-100 dark:border-gray-700'
-                                }`}>
+                                <div className={`max-w-[85%] p-3 rounded-2xl ${msg.role === 'user' ? 'bg-blue-500 text-white rounded-br-none' : 'bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-200 shadow-sm rounded-bl-none border border-gray-100 dark:border-gray-700'}`}>
                                     {msg.image && <img src={msg.image} alt="uploaded" className="max-w-full h-auto rounded-lg mb-2" />}
                                     <p className="whitespace-pre-wrap text-base leading-relaxed">{msg.content}</p>
                                     {msg.relatedTransactionId && (
-                                        <div 
-                                            onClick={() => {
-                                                const tx = transactions.find(t => t.id === msg.relatedTransactionId);
-                                                if (tx) { setEditingItem(tx); setModalOpen('transaction'); }
-                                            }}
-                                            className="mt-2 p-2 bg-gray-50 dark:bg-gray-700 rounded border border-gray-200 dark:border-gray-600 active:bg-gray-200 cursor-pointer transition-colors"
-                                        >
-                                            <p className="text-xs text-green-600 dark:text-green-400 flex items-center gap-1 font-bold">
-                                                <Save size={12} /> 已記帳 (點擊編輯)
-                                            </p>
+                                        <div onClick={() => { const tx = transactions.find(t => t.id === msg.relatedTransactionId); if (tx) { setEditingItem(tx); setModalOpen('transaction'); } }} className="mt-2 p-2 bg-gray-50 dark:bg-gray-700 rounded border border-gray-200 dark:border-gray-600 active:bg-gray-200 cursor-pointer transition-colors">
+                                            <p className="text-xs text-green-600 dark:text-green-400 flex items-center gap-1 font-bold"><Save size={12} /> 已記帳 (點擊編輯)</p>
                                         </div>
                                     )}
                                 </div>
-
                                 {msg.role !== 'user' && (
-                                    <button 
-                                        onClick={() => handleDeleteMessage(msg.id)}
-                                        className="mb-2 p-1.5 text-gray-300 hover:text-red-500 rounded-full active:bg-gray-200 transition-colors"
-                                    >
-                                        <Trash2 size={14} />
-                                    </button>
+                                    <button onClick={() => handleDeleteMessage(msg.id)} className="mb-2 p-1.5 text-gray-300 hover:text-red-500 rounded-full active:bg-gray-200 transition-colors"><Trash2 size={14} /></button>
                                 )}
                             </div>
                         ))}
@@ -678,21 +709,15 @@
                                 onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSendMessage(); } }}
                             />
                         </div>
-                        <button 
-                            onClick={handleSendMessage}
-                            disabled={!inputMessage.trim() && !selectedImage || isLoading}
-                            className={`p-3 rounded-full flex-shrink-0 ${(!inputMessage.trim() && !selectedImage) || isLoading ? 'bg-gray-200 text-gray-400 dark:bg-gray-700 dark:text-gray-500' : 'bg-blue-500 text-white shadow-lg shadow-blue-200 dark:shadow-none'}`}
-                        >
-                            <Send size={24} />
-                        </button>
+                        <button onClick={handleSendMessage} disabled={!inputMessage.trim() && !selectedImage || isLoading} className={`p-3 rounded-full flex-shrink-0 ${(!inputMessage.trim() && !selectedImage) || isLoading ? 'bg-gray-200 text-gray-400 dark:bg-gray-700 dark:text-gray-500' : 'bg-blue-500 text-white shadow-lg shadow-blue-200 dark:shadow-none'}`}><Send size={24} /></button>
                     </div>
                 </div>
             );
 
-            // ... Render Dashboard, Wallets, Settings (Using same logic as JSX, simplified for brevity in this HTML block, but functionally identical) ...
+            // ... Render Dashboard, Wallets, Settings ...
             
             const renderDashboard = () => {
-                const totalAssets = wallets.reduce((sum, w) => sum + w.balance, 0);
+                const totalAssets = wallets.reduce((sum, w) => sum + (w.balance || 0), 0);
                 const totalIncome = transactions.filter(t => t.type === 'income').reduce((sum, t) => sum + t.amount, 0);
                 const totalExpense = transactions.filter(t => t.type === 'expense').reduce((sum, t) => sum + t.amount, 0);
 
@@ -765,10 +790,28 @@
                         <div className="p-4">
                             <div className="flex justify-between items-center mb-4 sticky top-0 bg-gray-50 dark:bg-gray-900 z-10 py-2">
                                 <h2 className="text-2xl font-bold text-gray-800 dark:text-white">錢包管理</h2>
-                                <button onClick={() => { setEditingItem(null); setModalOpen('wallet'); }} className="bg-blue-500 text-white p-3 rounded-full shadow active:scale-95 transition-transform"><Plus size={24} /></button>
+                                <div className="flex gap-2">
+                                    <button 
+                                        onClick={() => setIsWalletReordering(!isWalletReordering)} 
+                                        className={`p-3 rounded-full shadow active:scale-95 transition-transform ${isWalletReordering ? 'bg-yellow-500 text-white' : 'bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-300'}`}
+                                    >
+                                        <ArrowUpDown size={24} />
+                                    </button>
+                                    <button onClick={() => { setEditingItem(null); setModalOpen('wallet'); }} className="bg-blue-500 text-white p-3 rounded-full shadow active:scale-95 transition-transform"><Plus size={24} /></button>
+                                </div>
                             </div>
                             <div className="space-y-4">
-                                {wallets.map(wallet => <div key={wallet.id} className="relative group"><WalletCard wallet={wallet} onClick={() => setSelectedWallet(wallet)} /></div>)}
+                                {wallets.map((wallet, idx) => (
+                                    <div key={wallet.id} className="relative group">
+                                        <WalletCard 
+                                            wallet={wallet} 
+                                            onClick={() => !isWalletReordering && setSelectedWallet(wallet)} 
+                                            showSort={isWalletReordering}
+                                            onMoveUp={() => moveWallet(idx, 'up')}
+                                            onMoveDown={() => moveWallet(idx, 'down')}
+                                        />
+                                    </div>
+                                ))}
                             </div>
                         </div>
                     </div>
@@ -796,8 +839,8 @@
                             </div>
                             <div className="bg-white dark:bg-gray-800 p-5 rounded-2xl shadow-sm space-y-3">
                                 <h3 className="font-bold dark:text-white text-lg">資料管理</h3>
-                                <button onClick={() => { const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify({ wallets, transactions, chatHistory, personas, categories })); const downloadAnchorNode = document.createElement('a'); downloadAnchorNode.setAttribute("href", dataStr); downloadAnchorNode.setAttribute("download", "accounting_backup.json"); document.body.appendChild(downloadAnchorNode); downloadAnchorNode.click(); downloadAnchorNode.remove(); }} className="w-full flex items-center justify-center gap-2 p-4 bg-blue-50 dark:bg-gray-700 text-blue-600 dark:text-blue-400 rounded-xl font-medium active:bg-blue-100"><Download size={20} /> 匯出備份 (JSON)</button>
-                                <label className="w-full flex items-center justify-center gap-2 p-4 bg-green-50 dark:bg-gray-700 text-green-600 dark:text-green-400 rounded-xl cursor-pointer font-medium active:bg-green-100"><Upload size={20} /> 匯入備份<input type="file" className="hidden" accept=".json" onChange={(e) => { const file = e.target.files[0]; if (!file) return; const reader = new FileReader(); reader.onload = (event) => { try { const data = JSON.parse(event.target.result); if (data.wallets) setWallets(data.wallets); if (data.transactions) setTransactions(data.transactions); if (data.chatHistory) setChatHistory(data.chatHistory); if (data.personas) setPersonas(data.personas); if (data.categories) setCategories(data.categories); alert("匯入成功！"); } catch (err) { alert("檔案格式錯誤"); } }; reader.readAsText(file); }} /></label>
+                                <button onClick={() => { const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify({ wallets, transactions, chatHistory, personas, categories, walletTypes })); const downloadAnchorNode = document.createElement('a'); downloadAnchorNode.setAttribute("href", dataStr); downloadAnchorNode.setAttribute("download", "accounting_backup.json"); document.body.appendChild(downloadAnchorNode); downloadAnchorNode.click(); downloadAnchorNode.remove(); }} className="w-full flex items-center justify-center gap-2 p-4 bg-blue-50 dark:bg-gray-700 text-blue-600 dark:text-blue-400 rounded-xl font-medium active:bg-blue-100"><Download size={20} /> 匯出備份 (JSON)</button>
+                                <label className="w-full flex items-center justify-center gap-2 p-4 bg-green-50 dark:bg-gray-700 text-green-600 dark:text-green-400 rounded-xl cursor-pointer font-medium active:bg-green-100"><Upload size={20} /> 匯入備份<input type="file" className="hidden" accept=".json" onChange={(e) => { const file = e.target.files[0]; if (!file) return; const reader = new FileReader(); reader.onload = (event) => { try { const data = JSON.parse(event.target.result); if (data.wallets) setWallets(data.wallets); if (data.transactions) setTransactions(data.transactions); if (data.chatHistory) setChatHistory(data.chatHistory); if (data.personas) setPersonas(data.personas); if (data.categories) setCategories(data.categories); if (data.walletTypes) setWalletTypes(data.walletTypes); alert("匯入成功！"); } catch (err) { alert("檔案格式錯誤"); } }; reader.readAsText(file); }} /></label>
                                 <button onClick={() => { if (confirm('確定要清除所有資料嗎？此操作無法復原！')) { localStorage.clear(); window.location.reload(); } }} className="w-full flex items-center justify-center gap-2 p-4 bg-red-50 dark:bg-gray-700 text-red-600 dark:text-red-400 rounded-xl font-medium active:bg-red-100"><RefreshCcw size={20} /> 重置所有資料</button>
                             </div>
                         </div>
@@ -805,7 +848,7 @@
                 </div>
             );
 
-            // --- Modals --- (Simplified markup structure for single file view)
+            // --- Modals ---
             const renderModal = () => {
                 if (!modalOpen) return null;
                 const closeModal = () => { setModalOpen(null); setEditingItem(null); };
@@ -890,13 +933,46 @@
                                 </div>
                             )}
 
-                            {/* Wallet Editor */}
+                            {/* Wallet Type Manager */}
+                            {modalOpen === 'wallet_type_manager' && (
+                                <div>
+                                    <div className="flex items-center gap-2 mb-4">
+                                        <button onClick={() => setModalOpen('wallet')} className="p-2 -ml-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800"><ChevronLeft size={20} className="dark:text-white" /></button>
+                                        <h3 className="text-2xl font-bold dark:text-white">錢包類型管理</h3>
+                                    </div>
+                                    <div className="space-y-2 max-h-[50vh] overflow-y-auto mb-4 px-1">
+                                        {walletTypes.map((type, idx) => (
+                                            <div key={idx} className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 rounded-xl group">
+                                                <span className="dark:text-white font-medium">{type}</span>
+                                                <button onClick={() => { if(confirm(`確定要刪除類型「${type}」嗎？`)) setWalletTypes(prev => prev.filter(t => t !== type)); }} className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"><Trash2 size={16} /></button>
+                                            </div>
+                                        ))}
+                                    </div>
+                                    <form onSubmit={(e) => { e.preventDefault(); const val = e.target.newType.value.trim(); if (val && !walletTypes.includes(val)) { setWalletTypes(prev => [...prev, val]); e.target.reset(); } }} className="flex gap-2">
+                                        <input name="newType" placeholder="新增類型..." className="flex-1 p-3 bg-gray-100 dark:bg-gray-800 rounded-xl dark:text-white outline-none focus:ring-2 ring-blue-500" />
+                                        <button type="submit" className="p-3 bg-blue-500 text-white rounded-xl shadow-lg shadow-blue-200 dark:shadow-none"><Plus size={24} /></button>
+                                    </form>
+                                </div>
+                            )}
+
+                            {/* Wallet Editor (Bug Fix: Added handleSaveWallet and key to force reset) */}
                             {modalOpen === 'wallet' && (
-                                <form onSubmit={(e) => { e.preventDefault(); const formData = new FormData(e.target); const newWallet = { id: editingItem ? editingItem.id : generateId(), name: formData.get('name'), type: formData.get('type'), balance: Number(formData.get('balance')), color: formData.get('color') }; if (editingItem && editingItem.id) setWallets(prev => prev.map(w => w.id === newWallet.id ? newWallet : w)); else setWallets(prev => [...prev, newWallet]); closeModal(); }}>
+                                <form 
+                                    key={editingItem ? editingItem.id : 'new-wallet'} 
+                                    onSubmit={handleSaveWallet}
+                                >
                                     <h3 className="text-2xl font-bold mb-6 dark:text-white">{editingItem ? '編輯錢包' : '新增錢包'}</h3>
                                     <div className="space-y-4">
                                         <div><label className="text-xs text-gray-500 ml-1">名稱</label><input required name="name" defaultValue={editingItem?.name} placeholder="例如：薪轉戶" className="w-full p-4 bg-gray-50 dark:bg-gray-800 border-none rounded-xl dark:text-white text-lg" /></div>
-                                        <div><label className="text-xs text-gray-500 ml-1">類型</label><input required name="type" defaultValue={editingItem?.type || 'Cash'} placeholder="例如：銀行、現金" className="w-full p-4 bg-gray-50 dark:bg-gray-800 border-none rounded-xl dark:text-white text-lg" /></div>
+                                        <div>
+                                            <label className="text-xs text-gray-500 ml-1">類型</label>
+                                            <div className="flex gap-2">
+                                                <select name="type" defaultValue={editingItem?.type || walletTypes[0]} className="flex-1 p-4 bg-gray-50 dark:bg-gray-800 border-none rounded-xl dark:text-white text-lg outline-none appearance-none">
+                                                    {walletTypes.map(t => <option key={t} value={t}>{t}</option>)}
+                                                </select>
+                                                <button type="button" onClick={() => setModalOpen('wallet_type_manager')} className="p-4 bg-gray-100 dark:bg-gray-800 rounded-xl text-gray-500 hover:text-blue-500"><Settings size={20} /></button>
+                                            </div>
+                                        </div>
                                         <div><label className="text-xs text-gray-500 ml-1">當前餘額</label><input required type="number" name="balance" defaultValue={editingItem?.balance || 0} placeholder="0" className="w-full p-4 bg-gray-50 dark:bg-gray-800 border-none rounded-xl dark:text-white text-lg font-mono" /></div>
                                         <div>
                                             <label className="text-xs text-gray-500 ml-1 mb-2 block">卡片顏色</label>
