@@ -329,6 +329,37 @@
                 showNotification('交易已刪除', 'info');
             };
 
+            // --- New Feature: Delete Message and Linked Transaction ---
+            const handleDeleteMessage = (msgId) => {
+                const msg = chatHistory.find(m => m.id === msgId);
+                if (!msg) return;
+
+                const hasTransaction = !!msg.relatedTransactionId;
+                const confirmMessage = hasTransaction 
+                    ? "這條訊息包含一筆交易紀錄，刪除訊息將會同時刪除該筆帳務並復原餘額。確定要刪除嗎？"
+                    : "確定要刪除這條訊息嗎？";
+
+                if (!window.confirm(confirmMessage)) return;
+
+                if (hasTransaction) {
+                    const txId = msg.relatedTransactionId;
+                    const tx = transactions.find(t => t.id === txId);
+                    
+                    // Only revert if transaction actually exists (might have been deleted manually in transaction list)
+                    if (tx) {
+                        const impact = calculateBalanceImpact(tx, true);
+                        setWallets(prev => prev.map(w => ({
+                            ...w,
+                            balance: w.balance + (impact[w.id] || 0)
+                        })));
+                        setTransactions(prev => prev.filter(t => t.id !== txId));
+                    }
+                }
+
+                setChatHistory(prev => prev.filter(m => m.id !== msgId));
+                showNotification('訊息已刪除', 'info');
+            };
+
             const handleSendMessage = async () => {
                 if ((!inputMessage.trim() && !selectedImage) || isLoading) return;
                 if (!apiKey) {
@@ -570,7 +601,17 @@
                             </div>
                         )}
                         {chatHistory.map((msg) => (
-                            <div key={msg.id} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                            <div key={msg.id} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'} items-end gap-2`}>
+                                {/* Delete button on the Left for User messages, Right for AI (swapped for UX flow) */}
+                                {msg.role === 'user' && (
+                                    <button 
+                                        onClick={() => handleDeleteMessage(msg.id)}
+                                        className="mb-2 p-1.5 text-gray-300 hover:text-red-500 rounded-full active:bg-gray-200 transition-colors"
+                                    >
+                                        <Trash2 size={14} />
+                                    </button>
+                                )}
+
                                 <div className={`max-w-[85%] p-3 rounded-2xl ${
                                     msg.role === 'user' 
                                         ? 'bg-blue-500 text-white rounded-br-none' 
@@ -592,6 +633,15 @@
                                         </div>
                                     )}
                                 </div>
+
+                                {msg.role !== 'user' && (
+                                    <button 
+                                        onClick={() => handleDeleteMessage(msg.id)}
+                                        className="mb-2 p-1.5 text-gray-300 hover:text-red-500 rounded-full active:bg-gray-200 transition-colors"
+                                    >
+                                        <Trash2 size={14} />
+                                    </button>
+                                )}
                             </div>
                         ))}
                         {isLoading && (
